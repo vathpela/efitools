@@ -1,8 +1,6 @@
 FILES = simple_file.o pecoff.o guid.o sha256.o console.o \
-	execute.o configtable.o shell.o
-ifeq ($(ARCH),x86_64)
-FILES += security_policy.o
-endif
+	execute.o configtable.o shell.o security_policy.o
+
 LIBFILES = $(FILES) kernel_efivars.o
 EFILIBFILES = $(patsubst %.o,%.efi.o,$(FILES)) variables.o 
 
