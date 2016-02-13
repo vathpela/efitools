@@ -6,6 +6,12 @@
 #include <stdint.h>
 #define __STDC_VERSION__ 199901L
 #include <efi.h>
+#ifdef CONFIG_arm
+/* FIXME:
+ * arm efi leaves a visibilit pragma pushed that won't work for
+ * non efi programs, so eliminate it */
+#pragma GCC visibility pop
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

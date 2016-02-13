@@ -1,6 +1,12 @@
 #include <efi.h>
 
 #ifndef BUILD_EFI
+#ifdef CONFIG_arm
+/* FIXME:
+ * arm efi leaves a visibilit pragma pushed that won't work for
+ * non efi programs, so eliminate it */
+#pragma GCC visibility pop
+#endif
 const char *guid_to_str(EFI_GUID *guid);
 int str_to_guid(const char *str, EFI_GUID *guid);
 int compare_guid(EFI_GUID *g1, EFI_GUID *g2);

@@ -50,6 +50,14 @@
 
 #include <efi.h>
 #include <efilib.h>
+#ifdef CONFIG_arm
+#ifndef BUILD_EFI
+/* FIXME:
+ * arm efi leaves a visibilit pragma pushed that won't work for
+ * non efi programs, so eliminate it */
+#pragma GCC visibility pop
+#endif
+#endif
 
 #include <pecoff.h>
 #include <guid.h>
