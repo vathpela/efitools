@@ -252,9 +252,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 					NULL
 				});
 			if (selection == 1)
-				uefi_call_wrapper(RT->ResetSystem, 4,
-						  EfiResetWarm,
-						  EFI_SUCCESS, 0, NULL);
+			  RT->ResetSystem(EfiResetWarm, EFI_SUCCESS, 0, NULL);
 		} else if (option == exit_moktool) {
 			break;
 		}

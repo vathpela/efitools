@@ -169,12 +169,11 @@ select_and_apply(CHAR16 **title, CHAR16 *ext, int key, UINTN options)
 		status = SetSecureVariable(keyinfo[key].name, esl, size,
 					   *keyinfo[key].guid, options, 0);
 	} else {
-		status = uefi_call_wrapper(RT->SetVariable, 5,
-					   keyinfo[key].name, keyinfo[key].guid,
-					   EFI_VARIABLE_NON_VOLATILE
-					   | EFI_VARIABLE_BOOTSERVICE_ACCESS
-					   | options,
-					   size, esl);
+	  status = RT->SetVariable(keyinfo[key].name, keyinfo[key].guid,
+				   EFI_VARIABLE_NON_VOLATILE
+				   | EFI_VARIABLE_BOOTSERVICE_ACCESS
+				   | options,
+				   size, esl);
 	}
 	if (status != EFI_SUCCESS) {
 		console_error(L"Failed to update variable", status);
@@ -193,7 +192,7 @@ StringSplit(CHAR16 *str, int maxlen, CHAR16 c, CHAR16 **out)
 		return 1;
 	}
 	while (len > 0) {
-		int i, found;
+		int i, found = 0;
 
 		for (i = 0; i < maxlen; i++) {
 			if (str[i] == c)
@@ -237,11 +236,10 @@ delete_key(int key, void *Data, int DataSize, EFI_SIGNATURE_LIST *CertList,
 					   DataSize,
 					   *keyinfo[key].guid, 0, 0);
 	else
-		status = uefi_call_wrapper(RT->SetVariable, 5,
-					   keyinfo[key].name, keyinfo[key].guid,
-					   EFI_VARIABLE_NON_VOLATILE
-					   | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-					   DataSize, Data);
+		status = RT->SetVariable(keyinfo[key].name, keyinfo[key].guid,
+					 EFI_VARIABLE_NON_VOLATILE
+					 | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+					 DataSize, Data);
 
 	if (status != EFI_SUCCESS)
 		console_error(L"Failed to delete key", status);
@@ -556,7 +554,7 @@ manipulate_key(int key)
 
 	UINT8 *Data;
 	UINTN DataSize = 0, Size;
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, keyinfo[key].name, keyinfo[key].guid, NULL, &DataSize, NULL);
+	efi_status = RT->GetVariable(keyinfo[key].name, keyinfo[key].guid, NULL, &DataSize, NULL);
 	if (efi_status != EFI_BUFFER_TOO_SMALL && efi_status != EFI_NOT_FOUND) {
 		console_error(L"Failed to get DataSize", efi_status);
 		return;
@@ -570,7 +568,7 @@ manipulate_key(int key)
 		return;
 	}
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, keyinfo[key].name, keyinfo[key].guid, NULL, &DataSize, Data);
+	efi_status = RT->GetVariable(keyinfo[key].name, keyinfo[key].guid, NULL, &DataSize, Data);
 	if (efi_status == EFI_NOT_FOUND) {
 		int t = 2;
 		title[t++] = L"Variable is Empty";
@@ -726,15 +724,14 @@ execute_binary()
 
 	devpath = FileDevicePath(h, bin_name);
 
-	status = uefi_call_wrapper(BS->LoadImage, 6, FALSE, im,
-				   devpath, NULL, 0, &ih);
+	status = BS->LoadImage(FALSE, im, devpath, NULL, 0, &ih);
 	if (status != EFI_SUCCESS) {
 		console_error(L"Image failed to load", status);
 		return;
 	}
 
-	status = uefi_call_wrapper(BS->StartImage, 3, ih, NULL, NULL);
-	uefi_call_wrapper(BS->UnloadImage, 1, ih);
+	status = BS->StartImage(ih, NULL, NULL);
+	BS->UnloadImage(ih);
 
 	if (status != EFI_SUCCESS)
 		console_error(L"Execution returned error", status);
@@ -754,7 +751,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 	if (GetOSIndications() & EFI_OS_INDICATIONS_TIMESTAMP_REVOCATION)
 		display_dbt = 1;
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
+	efi_status = RT->GetVariable(L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
 
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"No SetupMode variable ... is platform secure boot enabled?\n");		return EFI_SUCCESS;

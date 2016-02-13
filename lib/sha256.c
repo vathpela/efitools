@@ -24,15 +24,7 @@
 #include <sha256.h>
 #include <pecoff.h>
 #include <simple_file.h>
-
-#ifndef BUILD_EFI
-#include <stdio.h>
-#define Print(...) printf("%ls", __VA_ARGS__)
-#define AllocatePool(x) malloc(x)
-#define CopyMem(d, s, l) memcpy(d, s, l)
-#define ZeroMem(s, l) memset(s, 0, l)
-#define FreePool(s) free(s)
-#endif
+#include <buildefi.h>
 
 #define GET_UINT32(n,b,i)                       \
 {                                               \

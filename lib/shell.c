@@ -20,7 +20,7 @@ argsplit(EFI_HANDLE image, int *argc, CHAR16*** ARGV)
 
 	*argc = 0;
 
-	status = uefi_call_wrapper(BS->HandleProtocol, 3, image, &LoadedImageProtocol, (VOID **) &info);
+	status = BS->HandleProtocol(image, &LoadedImageProtocol, (VOID **) &info);
 	if (EFI_ERROR(status)) {
 		Print(L"Failed to get arguments\n");
 		return status;

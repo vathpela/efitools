@@ -102,8 +102,7 @@ execute(EFI_HANDLE image, CHAR16 *name)
 	EFI_DEVICE_PATH *devpath;
 	CHAR16 *PathName;
 
-	status = uefi_call_wrapper(BS->HandleProtocol, 3, image,
-				   &IMAGE_PROTOCOL, &li);
+	status = BS->HandleProtocol(image, &IMAGE_PROTOCOL, (VOID **)&li);
 	if (status != EFI_SUCCESS)
 		return status;
 
@@ -112,13 +111,12 @@ execute(EFI_HANDLE image, CHAR16 *name)
 	if (status != EFI_SUCCESS)
 		return status;
 
-	status = uefi_call_wrapper(BS->LoadImage, 6, FALSE, image,
-				   devpath, NULL, 0, &h);
+	status = BS->LoadImage(FALSE, image, devpath, NULL, 0, &h);
 	if (status != EFI_SUCCESS)
 		goto out;
 	
-	status = uefi_call_wrapper(BS->StartImage, 3, h, NULL, NULL);
-	uefi_call_wrapper(BS->UnloadImage, 1, h);
+	status = BS->StartImage(h, NULL, NULL);
+	BS->UnloadImage(h);
 
  out:
 	FreePool(PathName);

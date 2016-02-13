@@ -42,8 +42,8 @@ console_get_keystroke(void)
 	EFI_INPUT_KEY key;
 	UINTN EventIndex;
 
-	uefi_call_wrapper(BS->WaitForEvent, 3, 1, &ST->ConIn->WaitForKey, &EventIndex);
-	uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &key);
+	BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &EventIndex);
+	ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
 
 	return key;
 }
@@ -61,7 +61,7 @@ console_check_for_keystroke(CHAR16 key)
 	 * it */
 
 	for(;;) {
-		status = uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &k);
+	  status = ST->ConIn->ReadKeyStroke(ST->ConIn, &k);
 
 		if (status != EFI_SUCCESS)
 			break;
@@ -83,7 +83,7 @@ console_print_box_at(CHAR16 *str_arr[], int highlight, int start_col, int start_
 	if (lines == 0)
 		return;
 
-	uefi_call_wrapper(co->QueryMode, 4, co, co->Mode->Mode, &cols, &rows);
+	co->QueryMode(co, co->Mode->Mode, &cols, &rows);
 
 	/* last row on screen is unusable without scrolling, so ignore it */
 	rows--;
@@ -126,8 +126,8 @@ console_print_box_at(CHAR16 *str_arr[], int highlight, int start_col, int start_
 	Line[0] = BOXDRAW_DOWN_RIGHT;
 	Line[size_cols - 1] = BOXDRAW_DOWN_LEFT;
 	Line[size_cols] = L'\0';
-	uefi_call_wrapper(co->SetCursorPosition, 3, co, start_col, start_row);
-	uefi_call_wrapper(co->OutputString, 2, co, Line);
+	co->SetCursorPosition(co, start_col, start_row);
+	co->OutputString(co, Line);
 
 	int start;
 	if (offset == 0)
@@ -158,19 +158,19 @@ console_print_box_at(CHAR16 *str_arr[], int highlight, int start_col, int start_
 			CopyMem(Line + col + 1, s, min(len, size_cols - 2)*2);
 		}
 		if (line >= 0 && line == highlight) 
-			uefi_call_wrapper(co->SetAttribute, 2, co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK);
-		uefi_call_wrapper(co->SetCursorPosition, 3, co, start_col, i);
-		uefi_call_wrapper(co->OutputString, 2, co, Line);
+			co->SetAttribute(co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK);
+		co->SetCursorPosition(co, start_col, i);
+		co->OutputString(co, Line);
 		if (line >= 0 && line == highlight) 
-			uefi_call_wrapper(co->SetAttribute, 2, co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
+			co->SetAttribute(co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
 
 	}
 	SetMem16 (Line, size_cols * 2, BOXDRAW_HORIZONTAL);
 	Line[0] = BOXDRAW_UP_RIGHT;
 	Line[size_cols - 1] = BOXDRAW_UP_LEFT;
 	Line[size_cols] = L'\0';
-	uefi_call_wrapper(co->SetCursorPosition, 3, co, start_col, i);
-	uefi_call_wrapper(co->OutputString, 2, co, Line);
+	co->SetCursorPosition(co, start_col, i);
+	co->OutputString(co, Line);
 
 	FreePool (Line);
 
@@ -182,19 +182,19 @@ console_print_box(CHAR16 *str_arr[], int highlight)
 	SIMPLE_TEXT_OUTPUT_MODE SavedConsoleMode;
 	SIMPLE_TEXT_OUTPUT_INTERFACE *co = ST->ConOut;
 	CopyMem(&SavedConsoleMode, co->Mode, sizeof(SavedConsoleMode));
-	uefi_call_wrapper(co->EnableCursor, 2, co, FALSE);
-	uefi_call_wrapper(co->SetAttribute, 2, co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
+	co->EnableCursor(co, FALSE);
+	co->SetAttribute(co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
 
 	console_print_box_at(str_arr, highlight, 0, 0, -1, -1, 0,
 			     count_lines(str_arr));
 
 	console_get_keystroke();
 
-	uefi_call_wrapper(co->EnableCursor, 2, co, SavedConsoleMode.CursorVisible);
+	co->EnableCursor(co, SavedConsoleMode.CursorVisible);
 
-	uefi_call_wrapper(co->EnableCursor, 2, co, SavedConsoleMode.CursorVisible);
-	uefi_call_wrapper(co->SetCursorPosition, 3, co, SavedConsoleMode.CursorColumn, SavedConsoleMode.CursorRow);
-	uefi_call_wrapper(co->SetAttribute, 2, co, SavedConsoleMode.Attribute);
+	co->EnableCursor(co, SavedConsoleMode.CursorVisible);
+	co->SetCursorPosition(co, SavedConsoleMode.CursorColumn, SavedConsoleMode.CursorRow);
+	co->SetAttribute(co, SavedConsoleMode.Attribute);
 }
 
 int
@@ -211,7 +211,7 @@ console_select(CHAR16 *title[], CHAR16* selectors[], int start)
 	int title_lines = count_lines(title);
 	UINTN cols, rows;
 
-	uefi_call_wrapper(co->QueryMode, 4, co, co->Mode->Mode, &cols, &rows);
+	co->QueryMode(co, co->Mode->Mode, &cols, &rows);
 
 	for (i = 0; i < selector_lines; i++) {
 		int len = StrLen(selectors[i]);
@@ -247,8 +247,8 @@ console_select(CHAR16 *title[], CHAR16* selectors[], int start)
 	}
 
 	CopyMem(&SavedConsoleMode, co->Mode, sizeof(SavedConsoleMode));
-	uefi_call_wrapper(co->EnableCursor, 2, co, FALSE);
-	uefi_call_wrapper(co->SetAttribute, 2, co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
+	co->EnableCursor(co, FALSE);
+	co->SetAttribute(co, EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE);
 
 	console_print_box_at(title, -1, 0, 0, -1, -1, 1, count_lines(title));
 
@@ -281,11 +281,11 @@ console_select(CHAR16 *title[], CHAR16* selectors[], int start)
 	} while (!(k.ScanCode == SCAN_NULL
 		   && k.UnicodeChar == CHAR_CARRIAGE_RETURN));
 
-	uefi_call_wrapper(co->EnableCursor, 2, co, SavedConsoleMode.CursorVisible);
+	co->EnableCursor(co, SavedConsoleMode.CursorVisible);
 
-	uefi_call_wrapper(co->EnableCursor, 2, co, SavedConsoleMode.CursorVisible);
-	uefi_call_wrapper(co->SetCursorPosition, 3, co, SavedConsoleMode.CursorColumn, SavedConsoleMode.CursorRow);
-	uefi_call_wrapper(co->SetAttribute, 2, co, SavedConsoleMode.Attribute);
+	co->EnableCursor(co, SavedConsoleMode.CursorVisible);
+	co->SetCursorPosition(co, SavedConsoleMode.CursorColumn, SavedConsoleMode.CursorRow);
+	co->SetAttribute(co, SavedConsoleMode.Attribute);
 
 	if (selector < 0)
 		/* ESC pressed */
@@ -405,8 +405,8 @@ console_reset(void)
 {
 	SIMPLE_TEXT_OUTPUT_INTERFACE *co = ST->ConOut;
 
-	uefi_call_wrapper(co->Reset, 2, co, TRUE);
+	co->Reset(co, TRUE);
 	/* set mode 0 - required to be 80x25 */
-	uefi_call_wrapper(co->SetMode, 2, co, 0);
-	uefi_call_wrapper(co->ClearScreen, 1, co);
+	co->SetMode(co, 0);
+	co->ClearScreen(co);
 }

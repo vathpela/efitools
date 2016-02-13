@@ -104,8 +104,8 @@ security_policy_check_mok(void *data, UINTN len)
 	return EFI_SECURITY_VIOLATION;
 }
 
-static EFI_SECURITY_FILE_AUTHENTICATION_STATE esfas = NULL;
-static EFI_SECURITY2_FILE_AUTHENTICATION es2fa = NULL;
+static EFIAPI EFI_SECURITY_FILE_AUTHENTICATION_STATE esfas = NULL;
+static EFIAPI EFI_SECURITY2_FILE_AUTHENTICATION es2fa = NULL;
 
 EFI_STATUS
 EFIAPI
@@ -121,8 +121,7 @@ security2_policy_authentication (
 
 	/* Chain original security policy */
 
-	status = uefi_call_wrapper(es2fa, 5, This, DevicePath, FileBuffer,
-				   FileSize, BootPolicy);
+	status = es2fa(This, DevicePath, FileBuffer, FileSize, BootPolicy);
 
 	/* if OK, don't bother with MOK check */
 	if (status == EFI_SUCCESS)
@@ -158,8 +157,7 @@ security_policy_authentication (
 	CHAR16* DevPathStr;
 
 	/* Chain original security policy */
-	status = uefi_call_wrapper(esfas, 3, This, AuthenticationStatus,
-				   DevicePathConst);
+	status = esfas(This, AuthenticationStatus, DevicePathConst);
 
 	/* if OK avoid checking MOK: It's a bit expensive to
 	 * read the whole file in again (esfas already did this) */
@@ -170,8 +168,7 @@ security_policy_authentication (
 	 * EFI_SECURITY_VIOLATION */
 	fail_status = status;
 
-	status = uefi_call_wrapper(BS->LocateDevicePath, 3,
-				   &SIMPLE_FS_PROTOCOL, &DevPath, &h);
+	status = BS->LocateDevicePath(&SIMPLE_FS_PROTOCOL, &DevPath, &h);
 	if (status != EFI_SUCCESS)
 		goto out;
 
@@ -213,13 +210,11 @@ security_policy_install(void)
 	/* Don't bother with status here.  The call is allowed
 	 * to fail, since SECURITY2 was introduced in PI 1.2.1
 	 * If it fails, use security2_protocol == NULL as indicator */
-	uefi_call_wrapper(BS->LocateProtocol, 3,
-			  &SECURITY2_PROTOCOL_GUID, NULL,
-			  &security2_protocol);
+	BS->LocateProtocol(&SECURITY2_PROTOCOL_GUID, NULL,
+			   (VOID **)&security2_protocol);
 
-	status = uefi_call_wrapper(BS->LocateProtocol, 3,
-					   &SECURITY_PROTOCOL_GUID, NULL,
-					   &security_protocol);
+	status = BS->LocateProtocol(&SECURITY_PROTOCOL_GUID, NULL,
+				    (VOID **)&security_protocol);
 	if (status != EFI_SUCCESS)
 		/* This one is mandatory, so there's a serious problem */
 		return status;
@@ -253,9 +248,8 @@ security_policy_uninstall(void)
 	if (esfas) {
 		EFI_SECURITY_PROTOCOL *security_protocol;
 
-		status = uefi_call_wrapper(BS->LocateProtocol, 3,
-					   &SECURITY_PROTOCOL_GUID, NULL,
-					   &security_protocol);
+		status = BS->LocateProtocol(&SECURITY_PROTOCOL_GUID, NULL,
+					    (VOID **)&security_protocol);
 
 		if (status != EFI_SUCCESS)
 			return status;
@@ -270,9 +264,8 @@ security_policy_uninstall(void)
 	if (es2fa) {
 		EFI_SECURITY2_PROTOCOL *security2_protocol;
 
-		status = uefi_call_wrapper(BS->LocateProtocol, 3,
-					   &SECURITY2_PROTOCOL_GUID, NULL,
-					   &security2_protocol);
+		status = BS->LocateProtocol(&SECURITY2_PROTOCOL_GUID, NULL,
+					    (VOID **)&security2_protocol);
 
 		if (status != EFI_SUCCESS)
 			return status;

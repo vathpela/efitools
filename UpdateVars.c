@@ -134,11 +134,11 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 	} else if (esl_mode) {
 		status = SetSecureVariable(var, buf, size, *owner, options, 0);
 	} else {
-		status = uefi_call_wrapper(RT->SetVariable, 5, var, owner,
-					   EFI_VARIABLE_NON_VOLATILE
-					   | EFI_VARIABLE_BOOTSERVICE_ACCESS
-					   | options,
-					   size, buf);
+		status = RT->SetVariable(var, owner,
+					 EFI_VARIABLE_NON_VOLATILE
+					 | EFI_VARIABLE_BOOTSERVICE_ACCESS
+					 | options,
+					 size, buf);
 	}
 
 	if (status != EFI_SUCCESS) {

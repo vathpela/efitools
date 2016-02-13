@@ -57,14 +57,8 @@
 #include <variables.h>
 #include <sha256.h>
 #include <errors.h>
-
-#ifndef BUILD_EFI
-#include <stdio.h>
-#define Print(...) printf("%ls", __VA_ARGS__)
-#define AllocatePool(x) malloc(x)
-#define CopyMem(d, s, l) memcpy(d, s, l)
-#define ZeroMem(s, l) memset(s, 0, l)
-#endif
+#include <execute.h>
+#include <buildefi.h>
 
 EFI_STATUS
 pecoff_read_header(PE_COFF_LOADER_IMAGE_CONTEXT *context, void *data)
@@ -335,21 +329,19 @@ pecoff_execute_checked(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab, CHAR16 *name)
 	EFI_HANDLE h;
 	EFI_FILE *file;
 
-	status = uefi_call_wrapper(BS->HandleProtocol, 3, image,
-				   &IMAGE_PROTOCOL, &li);
+	status = BS->HandleProtocol(image, &IMAGE_PROTOCOL, (VOID **)&li);
 	if (status != EFI_SUCCESS)
 		return status;
 	status = generate_path(name, li, &loadpath, &PathName);
 	if (status != EFI_SUCCESS)
 		return status;
-	status = uefi_call_wrapper(BS->LoadImage, 6, FALSE, image,
-				   loadpath, NULL, 0, &h);
+	status = BS->LoadImage(FALSE, image, loadpath, NULL, 0, &h);
 	if (status == EFI_SECURITY_VIOLATION || status == EFI_ACCESS_DENIED)
 		status = pecoff_check_mok(image, name);
 	if (status != EFI_SUCCESS)
 		/* this will fail if signature validation fails */
 		return status;
-	uefi_call_wrapper(BS->UnloadImage, 1, h);
+	BS->UnloadImage(h);
 
 	status = simple_file_open(image, name, &file, EFI_FILE_MODE_READ);
 	if (status != EFI_SUCCESS)
@@ -397,7 +389,7 @@ pecoff_execute_image(EFI_FILE *file, CHAR16 *name, EFI_HANDLE image,
 		goto out;
 	}
 
-	efi_status = uefi_call_wrapper(entry_point, 2, image, systab);
+	efi_status = entry_point(image, systab);
 
  out:
 	FreePool(buffer);

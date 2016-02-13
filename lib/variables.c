@@ -99,7 +99,7 @@ CreateTimeBasedPayload (
   DescriptorData = (EFI_VARIABLE_AUTHENTICATION_2 *) (NewData);
 
   ZeroMem (&Time, sizeof (EFI_TIME));
-  Status = uefi_call_wrapper(RT->GetTime,2, &Time, NULL);
+  Status = RT->GetTime(&Time, NULL);
   if (EFI_ERROR (Status)) {
     FreePool(NewData);
     return Status;
@@ -164,13 +164,13 @@ SetSecureVariable(CHAR16 *var, UINT8 *Data, UINTN len, EFI_GUID owner,
 		return efi_status;
 	}
 
-	efi_status = uefi_call_wrapper(RT->SetVariable, 5, var, &owner,
-				       EFI_VARIABLE_NON_VOLATILE
-				       | EFI_VARIABLE_RUNTIME_ACCESS 
-				       | EFI_VARIABLE_BOOTSERVICE_ACCESS
-				       | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS
-				       | options,
-				       DataSize, Cert);
+	efi_status = RT->SetVariable(var, &owner,
+				     EFI_VARIABLE_NON_VOLATILE
+				     | EFI_VARIABLE_RUNTIME_ACCESS 
+				     | EFI_VARIABLE_BOOTSERVICE_ACCESS
+				     | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS
+				     | options,
+				     DataSize, Cert);
 
 	return efi_status;
 }
@@ -182,7 +182,7 @@ GetOSIndications(void)
 	UINTN DataSize = sizeof(indications);
 	EFI_STATUS efi_status;
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"OsIndicationsSupported", &GV_GUID, NULL, &DataSize, &indications);
+	efi_status = RT->GetVariable(L"OsIndicationsSupported", &GV_GUID, NULL, &DataSize, &indications);
 	if (efi_status != EFI_SUCCESS)
 		return 0;
 
@@ -195,17 +195,17 @@ SETOSIndicationsAndReboot(UINT64 indications)
 	UINTN DataSize = sizeof(indications);
 	EFI_STATUS efi_status;
 
-	efi_status = uefi_call_wrapper(RT->SetVariable, 5, L"OsIndications",
-				       &GV_GUID,
-				       EFI_VARIABLE_NON_VOLATILE
-				       | EFI_VARIABLE_RUNTIME_ACCESS 
-				       | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-				       DataSize, &indications);
+	efi_status = RT->SetVariable(L"OsIndications",
+				     &GV_GUID,
+				     EFI_VARIABLE_NON_VOLATILE
+				     | EFI_VARIABLE_RUNTIME_ACCESS 
+				     | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+				     DataSize, &indications);
 
 	if (efi_status != EFI_SUCCESS)
 		return efi_status;
 
-	uefi_call_wrapper(RT->ResetSystem, 4, EfiResetWarm, EFI_SUCCESS, 0, NULL);
+	RT->ResetSystem(EfiResetWarm, EFI_SUCCESS, 0, NULL);
 	/* does not return */
 
 	return EFI_SUCCESS;
@@ -219,8 +219,7 @@ get_variable_attr(CHAR16 *var, UINT8 **data, UINTN *len, EFI_GUID owner,
 
 	*len = 0;
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, var, &owner,
-				       NULL, len, NULL);
+	efi_status = RT->GetVariable(var, &owner, NULL, len, NULL);
 	if (efi_status != EFI_BUFFER_TOO_SMALL)
 		return efi_status;
 
@@ -228,8 +227,7 @@ get_variable_attr(CHAR16 *var, UINT8 **data, UINTN *len, EFI_GUID owner,
 	if (!data)
 		return EFI_OUT_OF_RESOURCES;
 	
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, var, &owner,
-				       attributes, len, *data);
+	efi_status = RT->GetVariable(var, &owner, attributes, len, *data);
 
 	if (efi_status != EFI_SUCCESS) {
 		FreePool(*data);
@@ -286,8 +284,7 @@ variable_is_setupmode(void)
 	UINT8 SetupMode = 1;
 	UINTN DataSize = sizeof(SetupMode);
 
-	uefi_call_wrapper(RT->GetVariable, 5, L"SetupMode", &GV_GUID, NULL,
-			  &DataSize, &SetupMode);
+	RT->GetVariable(L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
 
 	return SetupMode;
 }
@@ -300,8 +297,7 @@ variable_is_secureboot(void)
 	UINTN DataSize;
 
 	DataSize = sizeof(SecureBoot);
-	uefi_call_wrapper(RT->GetVariable, 5, L"SecureBoot", &GV_GUID, NULL,
-			  &DataSize, &SecureBoot);
+	RT->GetVariable(L"SecureBoot", &GV_GUID, NULL, &DataSize, &SecureBoot);
 
 	return SecureBoot;
 }
@@ -331,10 +327,10 @@ variable_enroll_hash(CHAR16 *var, EFI_GUID owner,
 		status = SetSecureVariable(var, sig, sizeof(sig), owner,
 					   EFI_VARIABLE_APPEND_WRITE, 0);
 	else
-		status = uefi_call_wrapper(RT->SetVariable, 5, var, &owner,
-					   EFI_VARIABLE_NON_VOLATILE
-					   | EFI_VARIABLE_BOOTSERVICE_ACCESS
-					   | EFI_VARIABLE_APPEND_WRITE,
-					   sizeof(sig), sig);
+		status = RT->SetVariable(var, &owner,
+					 EFI_VARIABLE_NON_VOLATILE
+					 | EFI_VARIABLE_BOOTSERVICE_ACCESS
+					 | EFI_VARIABLE_APPEND_WRITE,
+					 sizeof(sig), sig);
 	return status;
 }

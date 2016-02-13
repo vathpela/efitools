@@ -30,8 +30,8 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
 	console_reset();
 
-	status = uefi_call_wrapper(RT->GetVariable, 5, L"SecureBoot",
-				   &GV_GUID, NULL, &DataSize, &SecureBoot);
+	status = RT->GetVariable(L"SecureBoot",
+				 &GV_GUID, NULL, &DataSize, &SecureBoot);
 	if (status != EFI_SUCCESS) {
 		Print(L"Not a Secure Boot Platform %d\n", status);
 		goto override;

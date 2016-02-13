@@ -16,6 +16,7 @@
 #include <console.h>
 #include <efiauthenticated.h>
 #include <guid.h>
+#include <execute.h>
 
 CHAR16 *loader = L"\\linux-loader.efi";
 
@@ -65,7 +66,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
 	InitializeLib(image, systab);
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"SecureBoot", &GV_GUID, NULL, &DataSize, &SecureBoot);
+	efi_status = RT->GetVariable(L"SecureBoot", &GV_GUID, NULL, &DataSize, &SecureBoot);
 
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Not a Secure Boot Platform %d\n", efi_status);
@@ -74,10 +75,9 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 		DataSize = sizeof(SetupMode);
 	}
 
-	uefi_call_wrapper(RT->GetVariable, 5, L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
+	RT->GetVariable(L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
 
-	efi_status = uefi_call_wrapper(BS->HandleProtocol, 3, image,
-				       &IMAGE_PROTOCOL, &li);
+	efi_status = BS->HandleProtocol(image, &IMAGE_PROTOCOL, (VOID **)&li);
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Failed to init loaded image protocol: %d\n", efi_status);
 		return efi_status;
@@ -91,13 +91,13 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 	}
 
 	if (!SetupMode) {
-		efi_status = uefi_call_wrapper(BS->LoadImage, 6, FALSE, image,
-					       loadpath, NULL, 0, &loader_handle);
+		efi_status = BS->LoadImage(FALSE, image, loadpath, NULL,
+					   0, &loader_handle);
 		if (efi_status == EFI_SUCCESS) {
 			/* Image validates - start it */
 			Print(L"Starting file via StartImage\n");
-			uefi_call_wrapper(BS->StartImage, 3, loader_handle, NULL, NULL);
-			uefi_call_wrapper(BS->UnloadImage, 1, loader_handle);
+			BS->StartImage(loader_handle, NULL, NULL);
+			BS->UnloadImage(loader_handle);
 			return EFI_SUCCESS;
 		} else {
 			Print(L"Failed to load the image: %d\n", efi_status);

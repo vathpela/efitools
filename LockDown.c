@@ -22,7 +22,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
 	InitializeLib(image, systab);
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
+	efi_status = RT->GetVariable(L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
 
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"No SetupMode variable ... is platform secure boot enabled?\n");
@@ -36,23 +36,23 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
 	Print(L"Platform is in Setup Mode\n");
 
-	efi_status = uefi_call_wrapper(RT->SetVariable, 5, L"KEK", &GV_GUID,
-				       EFI_VARIABLE_NON_VOLATILE
-				       | EFI_VARIABLE_RUNTIME_ACCESS 
-				       | EFI_VARIABLE_BOOTSERVICE_ACCESS
-				       | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
-				       KEK_auth_len, KEK_auth);
+	efi_status = RT->SetVariable(L"KEK", &GV_GUID,
+				     EFI_VARIABLE_NON_VOLATILE
+				     | EFI_VARIABLE_RUNTIME_ACCESS 
+				     | EFI_VARIABLE_BOOTSERVICE_ACCESS
+				     | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
+				     KEK_auth_len, KEK_auth);
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Failed to enroll KEK: %d\n", efi_status);
 		return efi_status;
 	}
 	Print(L"Created KEK Cert\n");
-	efi_status = uefi_call_wrapper(RT->SetVariable, 5, L"db", &SIG_DB,
-				       EFI_VARIABLE_NON_VOLATILE
-				       | EFI_VARIABLE_RUNTIME_ACCESS 
-				       | EFI_VARIABLE_BOOTSERVICE_ACCESS
-				       | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
-				       DB_auth_len, DB_auth);
+	efi_status = RT->SetVariable(L"db", &SIG_DB,
+				     EFI_VARIABLE_NON_VOLATILE
+				     | EFI_VARIABLE_RUNTIME_ACCESS 
+				     | EFI_VARIABLE_BOOTSERVICE_ACCESS
+				     | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
+				     DB_auth_len, DB_auth);
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Failed to enroll db: %d\n", efi_status);
 		return efi_status;
@@ -68,12 +68,12 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 	}
 #endif
 	/* PK must be updated with a signed copy of itself */
-	efi_status = uefi_call_wrapper(RT->SetVariable, 5, L"PK", &GV_GUID,
-				       EFI_VARIABLE_NON_VOLATILE
-				       | EFI_VARIABLE_RUNTIME_ACCESS 
-				       | EFI_VARIABLE_BOOTSERVICE_ACCESS
-				       | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
-				       PK_auth_len, PK_auth);
+	efi_status = RT->SetVariable(L"PK", &GV_GUID,
+				     EFI_VARIABLE_NON_VOLATILE
+				     | EFI_VARIABLE_RUNTIME_ACCESS 
+				     | EFI_VARIABLE_BOOTSERVICE_ACCESS
+				     | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS,
+				     PK_auth_len, PK_auth);
 
 	
 	if (efi_status != EFI_SUCCESS) {
@@ -82,7 +82,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 	}
 	Print(L"Created PK Cert\n");
 	/* enrolling the PK should put us in SetupMode; check this */
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
+	efi_status = RT->GetVariable(L"SetupMode", &GV_GUID, NULL, &DataSize, &SetupMode);
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Failed to get SetupMode variable: %d\n", efi_status);
 		return efi_status;
@@ -91,7 +91,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
 	/* finally, check that SecureBoot is enabled */
 
-	efi_status = uefi_call_wrapper(RT->GetVariable, 5, L"SecureBoot", &GV_GUID, NULL, &DataSize, &SecureBoot);
+	efi_status = RT->GetVariable(L"SecureBoot", &GV_GUID, NULL, &DataSize, &SecureBoot);
 
 	if (efi_status != EFI_SUCCESS) {
 		Print(L"Failed to get SecureBoot variable: %d\n", efi_status);

@@ -1,7 +1,7 @@
 EFISIGNED = $(patsubst %.efi,%-signed.efi,$(EFIFILES))
 MANPAGES = $(patsubst doc/%.1.in,doc/%.1,$(wildcard doc/*.1.in))
 HELP2MAN = help2man
-ARCH	 = $(shell uname -m | sed s/i.86/ia32/)
+ARCH	 = $(shell uname -m | sed 's/i.86/ia32/;s/arm.*/arm/')
 ifeq ($(ARCH),ia32)
 ARCH3264 = -m32
 else ifeq ($(ARCH),x86_64)
@@ -9,13 +9,13 @@ ARCH3264 =
 else ifeq ($(ARCH),aarch64)
 ARCH3264 =
 else ifeq ($(ARCH),arm)
-ARCH3264 = -m32
+ARCH3264 =
 else
 $(error unknown architecture $(ARCH))
 endif
 INCDIR	   = -I$(TOPDIR)include/ -I/usr/include/efi -I/usr/include/efi/$(ARCH) -I/usr/include/efi/protocol
 CPPFLAGS   = -DCONFIG_$(ARCH)
-CFLAGS	   = -O2 $(ARCH3264) -fpic -Wall -fshort-wchar -fno-strict-aliasing -fno-merge-constants -mno-red-zone -fno-stack-protector -g
+CFLAGS	   = -O2 $(ARCH3264) -fpic -Wall -fshort-wchar -fno-strict-aliasing -fno-merge-constants -fno-stack-protector -ffreestanding -fno-stack-check
 LDFLAGS	   = -nostdlib
 CRTOBJ		= crt0-efi-$(ARCH).o
 CRTPATHS	= /lib /lib64 /lib/efi /lib64/efi /usr/lib /usr/lib64 /usr/lib/efi /usr/lib64/efi
@@ -23,10 +23,10 @@ CRTPATH		= $(shell for f in $(CRTPATHS); do if [ -e $$f/$(CRTOBJ) ]; then echo $
 CRTOBJS		= $(CRTPATH)/$(CRTOBJ)
 # there's a bug in the gnu tools ... the .reloc section has to be
 # aligned otherwise the file alignment gets screwed up
-LDSCRIPT	= $(TOPDIR)/elf_$(ARCH)_efi.lds
-LDFLAGS		+= -T $(LDSCRIPT) -shared -Bsymbolic $(CRTOBJS) -L $(CRTPATH)
+LDSCRIPT	= elf_$(ARCH)_efi.lds
+LDFLAGS		+= -shared -Bsymbolic $(CRTOBJS) -L $(CRTPATH) -T $(LDSCRIPT)
 LOADLIBES	= -lefi -lgnuefi $(shell $(CC) $(ARCH3264) -print-libgcc-file-name)
-FORMAT		= efi-app-$(ARCH)
+FORMAT		= --target=efi-app-$(ARCH)
 OBJCOPY		= objcopy
 MYGUID		= 11111111-2222-3333-4444-123456789abc
 INSTALL		= install
@@ -39,13 +39,27 @@ DOCDIR		= $(DESTDIR)/usr/share/efitools
 CFLAGS += -DGNU_EFI_USE_MS_ABI
 
 ifeq ($(ARCH),x86_64)
-  CFLAGS += -DEFI_FUNCTION_WRAPPER
+  CFLAGS += -DEFI_FUNCTION_WRAPPER -mno-red-zone
+endif
+
+ifeq ($(ARCH),ia32)
+  CFLAGS += -mno-red-zone
+endif
+
+ifeq ($(ARCH),arm)
+  LDFLAGS += --defsym=EFI_SUBSYSTEM=0x0a
+  FORMAT = -O binary
+endif
+
+ifeq ($(ARCH),aarch64)
+  LDFLAGS += --defsym=EFI_SUBSYSTEM=0x0a
+  FORMAT = -O binary
 endif
 
 %.efi: %.so
-	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel \
-		-j .rela -j .reloc --target=$(FORMAT) $*.so $@
-
+	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym \
+		   -j .rel -j .rela -j .rel.* -j .rela.* -j .rel* -j .rela* \
+		   -j .reloc $(FORMAT) $*.so $@
 %.so: %.o
 	$(LD) $(LDFLAGS) $^ -o $@ $(LOADLIBES)
 	# check we have no undefined symbols
