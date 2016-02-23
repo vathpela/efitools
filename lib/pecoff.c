@@ -273,6 +273,32 @@ pecoff_relocate(PE_COFF_LOADER_IMAGE_CONTEXT *context, void **data)
 	return EFI_SUCCESS;
 }
 
+EFI_STATUS
+pecoff_get_signature(PE_COFF_LOADER_IMAGE_CONTEXT *context, void *buffer,
+		     WIN_CERTIFICATE **data, int signum)
+{
+	WIN_CERTIFICATE *cert;
+	UINT32 offset;
+	int i;
+
+	if (!context->SecDir->Size)
+		return EFI_NOT_FOUND;
+
+	offset = context->SecDir->VirtualAddress;
+	cert = (WIN_CERTIFICATE *)(buffer + offset);
+	for (i = 0; i < signum; i++) {
+		offset += ALIGN_VALUE(cert->dwLength, 8);
+		cert = (WIN_CERTIFICATE *)(buffer + offset);
+		if (offset >= context->SecDir->VirtualAddress + context->SecDir->Size)
+			break;
+	}
+	if (i != signum)
+		return EFI_NOT_FOUND;
+
+	*data = cert;
+	return EFI_SUCCESS;
+}
+
 #ifdef BUILD_EFI
 EFI_STATUS
 pecoff_check_mok(EFI_HANDLE image, CHAR16 *name)

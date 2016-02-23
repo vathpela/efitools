@@ -13,6 +13,11 @@ EFI_STATUS
 pecoff_execute_image(EFI_FILE *file, CHAR16 *name, EFI_HANDLE image,
 		     EFI_SYSTEM_TABLE *systab);
 
+EFI_STATUS
+pecoff_get_signature(PE_COFF_LOADER_IMAGE_CONTEXT *context, void *buffer,
+		     WIN_CERTIFICATE **data, int signum);
+
+
 static inline void*
 pecoff_image_address(void *image, int size, unsigned int address)
 {
