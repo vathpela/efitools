@@ -206,4 +206,7 @@ struct _EFI_PKCS7_VERIFY_PROTOCOL {
   EFI_PKCS7_VERIFY_SIGNATURE      VerifySignature;
 };
 
+EFI_STATUS
+pkcs7verify_get_protocol(EFI_HANDLE image, EFI_PKCS7_VERIFY_PROTOCOL **p7vp, CHAR16 **error);
+
 #endif
