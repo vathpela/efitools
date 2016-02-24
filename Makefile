@@ -1,5 +1,5 @@
 EFIFILES = HelloWorld.efi LockDown.efi Loader.efi ReadVars.efi UpdateVars.efi \
-	KeyTool.efi HashTool.efi SetNull.efi
+	KeyTool.efi HashTool.efi SetNull.efi ShimReplace.efi
 BINARIES = cert-to-efi-sig-list sig-list-to-certs sign-efi-sig-list \
 	hash-to-efi-sig-list efi-readvar efi-updatevar cert-to-efi-hash-list \
 	flash-var
@@ -85,6 +85,7 @@ KeyTool.so: lib/lib-efi.a lib/asn1/libasn1-efi.a
 HashTool.so: lib/lib-efi.a
 PreLoader.so: lib/lib-efi.a
 HelloWorld.so: lib/lib-efi.a
+ShimReplace.so: lib/lib-efi.a
 
 cert-to-efi-sig-list: cert-to-efi-sig-list.o lib/lib.a
 	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
