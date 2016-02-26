@@ -40,7 +40,13 @@ static EFI_SIGNATURE_LIST **to_cert_list(VOID *data, UINTN len)
 	return retval;
 }
 
-static EFI_STATUS shimprotocol_verify (void *buffer, UINT32 size)
+static EFI_STATUS shimprotocol_context(void *data, unsigned int size,
+				       PE_COFF_LOADER_IMAGE_CONTEXT *context)
+{
+	return pecoff_read_header(context, data);
+}
+
+static EFI_STATUS shimprotocol_verify(void *buffer, UINT32 size)
 {
 	EFI_STATUS status;
 	PE_COFF_LOADER_IMAGE_CONTEXT context;
@@ -99,6 +105,7 @@ static EFI_STATUS shimprotocol_verify (void *buffer, UINT32 size)
 
 static SHIM_LOCK shim_protocol_interface = {
 	.Verify = shimprotocol_verify,
+	.Context = shimprotocol_context,
 };
 static EFI_HANDLE shim_protocol_handle;
 
