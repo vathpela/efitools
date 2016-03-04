@@ -30,6 +30,7 @@
 #include <sha256.h>
 #include <errors.h>
 
+
 EFI_STATUS
 variable_create_esl(void *cert, int cert_len, EFI_GUID *type, EFI_GUID *owner,
 		    void **out, int *outlen)
@@ -275,6 +276,54 @@ find_in_variable_esl(CHAR16* var, EFI_GUID owner, UINT8 *key, UINTN keylen)
 	FreePool(Data);
 
 	return status;
+}
+
+int
+hashes_in_esl(UINT8 *Data, UINTN DataSize, EFI_GUID *hashes[])
+{
+	int count = 0;
+	EFI_SIGNATURE_LIST *CertList;
+
+	certlist_for_each_certentry(CertList, Data, DataSize, DataSize) {
+		int i;
+
+		for (i = 0; i < count; i++) {
+			if (CompareGuid(&CertList->SignatureType, hashes[i]) == 0)
+			    goto found_skip;
+		}
+
+		for (i = 0; i < allowed_hashes_size; i++) {
+			if (CompareGuid(&CertList->SignatureType, allowed_hashes[i]) == 0)
+				goto found;
+		}
+	found_skip:
+		continue;
+
+	found:
+		hashes[count++] = allowed_hashes[i];
+	}
+	return count;
+}
+
+int
+hashes_in_variable(CHAR16* var, EFI_GUID owner, EFI_GUID *hashes[])
+{
+	UINTN DataSize;
+	UINT8 *Data;
+	EFI_STATUS status;
+	int count;
+
+	status = get_variable(var, &Data, &DataSize, owner);
+	if (status == EFI_NOT_FOUND)
+		return 0;
+	if (status != EFI_SUCCESS)
+		return -1;
+
+	count = hashes_in_esl(Data, DataSize, hashes);
+
+	FreePool(Data);
+
+	return count;
 }
 
 int

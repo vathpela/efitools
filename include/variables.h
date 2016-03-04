@@ -44,3 +44,7 @@ variable_enroll_hash(CHAR16 *var, EFI_GUID owner,
 EFI_STATUS
 variable_create_esl(void *cert, int cert_len, EFI_GUID *type, EFI_GUID *owner,
 		    void **out, int *outlen);
+int
+hashes_in_esl(UINT8 *Data, UINTN DataSize, EFI_GUID *hashes[]);
+int
+hashes_in_variable(CHAR16* var, EFI_GUID owner, EFI_GUID *hashes[]);
