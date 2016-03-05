@@ -36,7 +36,7 @@ typedef struct _SHIM_LOCK {
 } SHIM_LOCK;
 
 
-EFI_STATUS shim_protocol_install(EFI_PKCS7_VERIFY_PROTOCOL *p);
+EFI_STATUS shim_protocol_install(void);
 void shim_protocol_uninstall(void);
 
 #endif /* _SHIM_PROTOCOL_H */

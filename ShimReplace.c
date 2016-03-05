@@ -38,7 +38,7 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 		return efi_status;
 	}
 
-	efi_status = shim_protocol_install(p7vp);
+	efi_status = shim_protocol_install();
 	if (efi_status != EFI_SUCCESS)
 		console_error(L"Failed to install shim protocol", efi_status);
 
