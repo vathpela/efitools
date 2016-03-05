@@ -208,5 +208,13 @@ struct _EFI_PKCS7_VERIFY_PROTOCOL {
 
 EFI_STATUS
 pkcs7verify_get_protocol(EFI_HANDLE image, EFI_PKCS7_VERIFY_PROTOCOL **p7vp, CHAR16 **error);
+BOOLEAN
+pkcs7verify_deny(VOID *data, UINTN len);
+EFI_SIGNATURE_LIST **
+pkcs7verify_to_cert_list(VOID *data, UINTN len);
+BOOLEAN
+pkcs7verify_allow(VOID *data, UINTN len);
+
+
 
 #endif
