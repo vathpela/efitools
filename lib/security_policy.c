@@ -107,6 +107,10 @@ security_policy_check_mok(void *data, UINTN len)
 static EFIAPI EFI_SECURITY_FILE_AUTHENTICATION_STATE esfas = NULL;
 static EFIAPI EFI_SECURITY2_FILE_AUTHENTICATION es2fa = NULL;
 
+static BOOLEAN(*sp_override)(void) = NULL;
+static POLICY_FUNCTION sp_allow = NULL;
+static POLICY_FUNCTION sp_deny = NULL;
+
 EFI_STATUS
 EFIAPI
 security2_policy_authentication (
@@ -156,13 +160,11 @@ security_policy_authentication (
 	UINTN FileSize;
 	CHAR16* DevPathStr;
 
+	if (sp_override && sp_override())
+		return EFI_SUCCESS;
+
 	/* Chain original security policy */
 	status = esfas(This, AuthenticationStatus, DevicePathConst);
-
-	/* if OK avoid checking MOK: It's a bit expensive to
-	 * read the whole file in again (esfas already did this) */
-	if (status == EFI_SUCCESS)
-		goto out;
 
 	/* capture failure status: may be either EFI_ACCESS_DENIED or
 	 * EFI_SECURITY_VIOLATION */
@@ -185,23 +187,37 @@ security_policy_authentication (
 	if (status != EFI_SUCCESS)
 		goto out;
 
-	status = security_policy_check_mok(FileBuffer, FileSize);
-	FreePool(FileBuffer);
+	status = EFI_SECURITY_VIOLATION;
+	if (sp_deny && sp_deny(FileBuffer, FileSize))
+		goto out;
 
-	if (status == EFI_ACCESS_DENIED || status == EFI_SECURITY_VIOLATION)
-		/* return what the platform originally said */
-		status = fail_status;
+	status = fail_status;
+	if (status == EFI_SUCCESS)
+		goto out;
+
+	/* fail status is platform security failure now */
+
+	if (sp_allow && sp_allow(FileBuffer, FileSize))
+		status = EFI_SUCCESS;
+
  out:
-	FreePool(OrigDevPath);
+	if (FileBuffer)
+		FreePool(FileBuffer);
+	if (OrigDevPath)
+		FreePool(OrigDevPath);
 	return status;
 }
 
 EFI_STATUS
-security_policy_install(void)
+security_policy_install(BOOLEAN (*override)(void), POLICY_FUNCTION allow, POLICY_FUNCTION deny)
 {
 	EFI_SECURITY_PROTOCOL *security_protocol;
 	EFI_SECURITY2_PROTOCOL *security2_protocol = NULL;
 	EFI_STATUS status;
+
+	sp_override = override;
+	sp_allow = allow;
+	sp_deny = deny;
 
 	if (esfas)
 		/* Already Installed */
