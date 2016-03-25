@@ -31,17 +31,25 @@
 int
 main(int argc, char *argv[])
 {
-	char *certfile, *efifile, *name;
+	char *certfile, *efifile, *name, *esl_name;
 	const char *progname = argv[0];
+	int output_esl = 0;
 
-	if (argc != 3) {
+	if (argc != 3 && argc != 4) {
 		printf("Usage: %s <efi sig list file> <cert file base name>\n", progname);
 		exit(1);
+	}
+
+	if (strcmp("-e", argv[1]) == 0) {
+		output_esl = 1;
+		argc--;
+		argv++;
 	}
 
 	efifile = argv[1];
 	certfile = argv[2];
 	name = malloc(strlen(certfile)+10);
+	esl_name = malloc(strlen(certfile)+10);
 
 	int fd = open(efifile, O_RDONLY);
 	if (fd < 0) {
@@ -80,6 +88,8 @@ main(int argc, char *argv[])
 
 		certentry_for_each_cert(sd, sl) {
 
+			FILE *g;
+
 			if (memcmp(&sl->SignatureType, &EFI_CERT_X509_GUID, sizeof(EFI_GUID)) == 0) {
 				printf("X509 ");
 				ext = "der";
@@ -101,10 +111,17 @@ main(int argc, char *argv[])
 
 			EFI_GUID *guid = &sd->SignatureOwner;
 
+			sprintf(esl_name, "%s-%d.esl",certfile,count);
 			sprintf(name, "%s-%d.%s",certfile,count++,ext);
 			printf("file %s: Guid %s\n", name, guid_to_str(guid));
 
-			FILE *g = fopen(name, "w");
+			if (output_esl) {
+				g = fopen(esl_name, "w");
+				fwrite(sl, 1, sl->SignatureListSize, g);
+				fclose(g);
+			}
+
+			g = fopen(name, "w");
 			fwrite(sd->SignatureData, 1, sl->SignatureSize - OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData), g);
 			printf("Written %d bytes\n", sl->SignatureSize - (UINT32)OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData));
 			fclose(g);
