@@ -129,21 +129,6 @@ BOOLEAN security_policy_mok_allow(VOID *data, UINTN len)
 	return FALSE;
 }
 
-static EFI_STATUS
-security_policy_check_mok(void *data, UINTN len)
-{
-	if (security_policy_mok_override())
-		return EFI_SUCCESS;
-
-	if (security_policy_mok_deny(data, len))
-		/* MOK list cannot override dbx */
-		return EFI_SECURITY_VIOLATION;
-
-	if (security_policy_mok_allow(data, len))
-		return EFI_SUCCESS;
-	return EFI_SECURITY_VIOLATION;
-}
-
 static EFIAPI EFI_SECURITY_FILE_AUTHENTICATION_STATE esfas = NULL;
 static EFIAPI EFI_SECURITY2_FILE_AUTHENTICATION es2fa = NULL;
 
@@ -161,25 +146,27 @@ security2_policy_authentication (
 	BOOLEAN	BootPolicy
 				 )
 {
-	EFI_STATUS status, auth;
+	EFI_STATUS status;
+
+	if (sp_override && sp_override())
+		return EFI_SUCCESS;
+
+	/* if policy would deny, fail now  */
+	if (sp_deny && sp_deny(FileBuffer, FileSize))
+		return EFI_SECURITY_VIOLATION;
 
 	/* Chain original security policy */
 
 	status = es2fa(This, DevicePath, FileBuffer, FileSize, BootPolicy);
 
-	/* if OK, don't bother with MOK check */
+	/* if OK, don't bother with allow check */
 	if (status == EFI_SUCCESS)
 		return status;
 
-	auth = security_policy_check_mok(FileBuffer, FileSize);
+	if (sp_allow && sp_allow(FileBuffer, FileSize))
+		return EFI_SUCCESS;
 
-	if (auth == EFI_SECURITY_VIOLATION || auth == EFI_ACCESS_DENIED)
-		/* return previous status, which is the correct one
-		 * for the platform: may be either EFI_ACCESS_DENIED
-		 * or EFI_SECURITY_VIOLATION */
-		return status;
-
-	return auth;
+	return status;
 }
 
 EFI_STATUS
