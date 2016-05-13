@@ -42,7 +42,9 @@ efi_main (EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 		goto override;
 	}
 
-	status = security_policy_install();
+	status = security_policy_install(security_policy_mok_override,
+					 security_policy_mok_allow,
+					 security_policy_mok_deny);
 	if (status != EFI_SUCCESS) {
 		console_error(L"Failed to install override security policy",
 			      status);
