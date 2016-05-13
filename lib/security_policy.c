@@ -51,16 +51,14 @@ struct _EFI_SECURITY_PROTOCOL {
 static UINT8 *security_policy_esl = NULL;
 static UINTN security_policy_esl_len;
 
-static EFI_STATUS
-security_policy_check_mok(void *data, UINTN len)
+BOOLEAN security_policy_mok_override(void)
 {
-	EFI_STATUS status;
-	UINT8 hash[SHA256_DIGEST_SIZE];
-	UINT32 attr;
 	UINT8 *VarData;
 	UINTN VarLen;
+	UINT32 attr;
+	EFI_STATUS status;
 
-	/* first check is MokSBState.  If we're in insecure mode, boot
+	/* Secure Boot Override: MokSBState.  If we're in insecure mode, boot
 	 * anyway regardless of dbx contents */
 	status = get_variable_attr(L"MokSBState", &VarData, &VarLen,
 				   MOK_OWNER, &attr);
@@ -70,17 +68,44 @@ security_policy_check_mok(void *data, UINTN len)
 		FreePool(VarData);
 		if ((attr & EFI_VARIABLE_RUNTIME_ACCESS) == 0
 		    && MokSBState)
-			return EFI_SUCCESS;
+			return TRUE;
 	}
+	return FALSE;
+}
+
+BOOLEAN security_policy_mok_deny(VOID *data, UINTN len)
+{
+	EFI_STATUS status;
+	UINT8 hash[SHA256_DIGEST_SIZE];
 
 	status = sha256_get_pecoff_digest_mem(data, len, hash);
 	if (status != EFI_SUCCESS)
-		return status;
+		return TRUE;
 
 	if (find_in_variable_esl(L"dbx", SIG_DB, hash, SHA256_DIGEST_SIZE)
 	    == EFI_SUCCESS)
 		/* MOK list cannot override dbx */
-		return EFI_SECURITY_VIOLATION;
+		return FALSE;
+
+	if (find_in_variable_esl(L"MokListX", SIG_DB, hash, SHA256_DIGEST_SIZE)
+	    == EFI_SUCCESS)
+		return TRUE;
+
+	return FALSE;
+}
+
+BOOLEAN security_policy_mok_allow(VOID *data, UINTN len)
+{
+	EFI_STATUS status;
+	UINT8 hash[SHA256_DIGEST_SIZE];
+	UINT32 attr;
+	UINT8 *VarData;
+	UINTN VarLen;
+
+
+	status = sha256_get_pecoff_digest_mem(data, len, hash);
+	if (status != EFI_SUCCESS)
+		return TRUE;
 
 	status = get_variable_attr(L"MokList", &VarData, &VarLen, MOK_OWNER,
 				   &attr);
@@ -93,14 +118,29 @@ security_policy_check_mok(void *data, UINTN len)
 		goto check_tmplist;
 
 	if (find_in_variable_esl(L"MokList", MOK_OWNER, hash, SHA256_DIGEST_SIZE) == EFI_SUCCESS)
-		return EFI_SUCCESS;
+		return TRUE;
 
  check_tmplist:
 	if (security_policy_esl
 	    && find_in_esl(security_policy_esl, security_policy_esl_len, hash,
 			   SHA256_DIGEST_SIZE) == EFI_SUCCESS)
+		return TRUE;
+
+	return FALSE;
+}
+
+static EFI_STATUS
+security_policy_check_mok(void *data, UINTN len)
+{
+	if (security_policy_mok_override())
 		return EFI_SUCCESS;
 
+	if (security_policy_mok_deny(data, len))
+		/* MOK list cannot override dbx */
+		return EFI_SECURITY_VIOLATION;
+
+	if (security_policy_mok_allow(data, len))
+		return EFI_SUCCESS;
 	return EFI_SECURITY_VIOLATION;
 }
 
