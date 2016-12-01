@@ -49,9 +49,17 @@ help(const char * progname)
 int
 main(int argc, char *argv[])
 {
-	char *certfile, *efifile;
+	char *efifile;
 	const char *progname = argv[0];
 	EFI_GUID owner = { 0 };
+	int i;
+	EFI_SIGNATURE_LIST *PkCerts;
+	int PkCertLen = 0;
+	struct {
+		X509 *cert;
+		int len;
+	} certs[1024] = { {NULL, 0}, };
+	int offset = 0;
 
 	while (argc > 1) {
 		if (strcmp("--version", argv[1]) == 0) {
@@ -68,15 +76,16 @@ main(int argc, char *argv[])
 			break;
 		}
 	}
-	  
 
-	if (argc != 3) {
-
+	if (argc < 3) {
+		exit(1);
+	}
+	if (argc > 1023) {
 		exit(1);
 	}
 
-	certfile = argv[1];
-	efifile = argv[2];
+	efifile = argv[argc-1];
+	argc--;
 
         ERR_load_crypto_strings();
         OpenSSL_add_all_digests();
@@ -87,26 +96,43 @@ main(int argc, char *argv[])
 	 * (malloc will cause other failures out lower down */
 	ERR_clear_error();
 
-        BIO *cert_bio = BIO_new_file(certfile, "r");
-        X509 *cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
-	int PkCertLen = i2d_X509(cert, NULL);
+	for (i = 1; i < argc; i++) {
+		char *certfile = argv[i];
+	        BIO *cert_bio = BIO_new_file(certfile, "r");
+	        X509 *cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
+		int certlen = i2d_X509(cert, NULL);
 
-	PkCertLen += sizeof(EFI_SIGNATURE_LIST) + OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData);
-	EFI_SIGNATURE_LIST          *PkCert = malloc (PkCertLen);
-	if (!PkCert) {
+		certlen += sizeof(EFI_SIGNATURE_LIST) + OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData);
+		PkCertLen += certlen;
+
+		certs[i-1].cert = cert;
+		certs[i-1].len = certlen;
+	}
+
+	PkCerts = malloc (PkCertLen);
+	if (!PkCerts) {
 		fprintf(stderr, "failed to malloc cert\n");
 		exit(1);
 	}
-	unsigned char *tmp = (unsigned char *)PkCert + sizeof(EFI_SIGNATURE_LIST) + OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData);
-	i2d_X509(cert, &tmp);
-	PkCert->SignatureListSize   = PkCertLen;
-	PkCert->SignatureSize       = (UINT32) (PkCertLen - sizeof(EFI_SIGNATURE_LIST));
-	PkCert->SignatureHeaderSize = 0;
-	PkCert->SignatureType = EFI_CERT_X509_GUID;
 
-	EFI_SIGNATURE_DATA *PkCertData = (void *)PkCert + sizeof(EFI_SIGNATURE_LIST);
+	for (i = 0; i < argc-1; i++) {
+		EFI_SIGNATURE_LIST *PkCert;
 
-	PkCertData->SignatureOwner = owner; 
+		PkCert = (EFI_SIGNATURE_LIST *)((intptr_t)PkCerts + offset);
+
+		unsigned char *tmp = (unsigned char *)PkCert + sizeof(EFI_SIGNATURE_LIST) + OFFSET_OF(EFI_SIGNATURE_DATA, SignatureData);
+		i2d_X509(certs[i].cert, &tmp);
+		PkCert->SignatureListSize   = certs[i].len;
+		PkCert->SignatureSize       = (UINT32) (certs[i].len - sizeof(EFI_SIGNATURE_LIST));
+		PkCert->SignatureHeaderSize = 0;
+		PkCert->SignatureType = EFI_CERT_X509_GUID;
+
+		EFI_SIGNATURE_DATA *PkCertData = (void *)PkCert + sizeof(EFI_SIGNATURE_LIST);
+
+		PkCertData->SignatureOwner = owner;
+
+		offset += certs[i].len;
+	}
 
 	FILE *f = fopen(efifile, "w");
 	if (!f) {
@@ -114,7 +140,7 @@ main(int argc, char *argv[])
 		perror("");
 		exit(1);
 	}
-	if (fwrite(PkCert, 1, PkCertLen, f) != PkCertLen) {
+	if (fwrite(PkCerts, 1, PkCertLen, f) != PkCertLen) {
 		perror("Did not write enough bytes to efi file");
 		exit(1);
 	}
