@@ -21,6 +21,9 @@ KEYUPDATEAUTH = $(ALLKEYS:=-update.auth) $(ALLKEYS:=-pkupdate.auth)
 KEYBLACKLISTAUTH = $(ALLKEYS:=-blacklist.auth)
 KEYHASHBLACKLISTAUTH = $(ALLKEYS:=-hash-blacklist.auth)
 
+APPEND_DB ?=
+APPEND_KEK ?=
+
 export TOPDIR	:= $(shell pwd)/
 
 include Make.rules
@@ -59,8 +62,11 @@ PreLoader.o: hashlist.h
 PK.h: PK.auth
 
 KEK.h: KEK.auth
+KEK.esl: KEK.crt $(APPEND_KEK)
 
 DB.h: DB.auth
+
+DB.esl: DB.crt $(APPEND_DB)
 
 noPK.esl:
 	> noPK.esl
