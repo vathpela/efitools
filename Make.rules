@@ -18,13 +18,20 @@ CPPFLAGS   = -DCONFIG_$(ARCH)
 CFLAGS	   = -O2 -g $(ARCH3264) -fpic -Wall -fshort-wchar -fno-strict-aliasing -fno-merge-constants -fno-stack-protector -ffreestanding -fno-stack-check
 LDFLAGS	   = -nostdlib
 CRTOBJ		= crt0-efi-$(ARCH).o
-CRTPATHS	= /lib /lib64 /lib/efi /lib64/efi /usr/lib /usr/lib64 /usr/lib/efi /usr/lib64/efi /usr/lib/gnuefi /usr/lib64/gnuefi
-CRTPATH		= $(shell for f in $(CRTPATHS); do if [ -e $$f/$(CRTOBJ) ]; then echo $$f; break; fi; done)
+CRTPATHROOTS	= /lib /lib64 /usr/lib /usr/lib64
+CRTPATHENDS	= "" efi gnuefi
+CRTPATH		= $(shell for f in $(CRTPATHROOTS); do for g in $(CRTPATHENDS) ; do \
+			if [ -e $$f/$$g/$(CRTOBJ) ]; then echo $$f/$$g ; break 2; fi; done ; done)
 CRTOBJS		= $(CRTPATH)/$(CRTOBJ)
+LIBDOTA_NAME	= libgnuefi.a
+LIBPATH		= $(shell for f in $(CRTPATHROOTS); do for g in $(CRTPATHENDS) ; do \
+			if [ -e $$f/$$g/$(LIBDOTA_NAME) ]; then echo $$f/$$g/ ; break 2; fi; done ; done)
 # there's a bug in the gnu tools ... the .reloc section has to be
 # aligned otherwise the file alignment gets screwed up
-LDSCRIPT	= elf_$(ARCH)_efi.lds
-LDFLAGS		+= -shared -Bsymbolic $(CRTOBJS) -L $(CRTPATH) -L /usr/lib -L /usr/lib64 -T $(LDSCRIPT)
+LDSCRIPT_NAME	= elf_$(ARCH)_efi.lds
+LDSCRIPT	= $(shell for f in $(CRTPATHROOTS); do for g in $(CRTPATHENDS) ; do \
+			if [ -e $$f/$$g/$(LDSCRIPT_NAME) ]; then echo $$f/$$g/$(LDSCRIPT_NAME) ; break 2; fi; done ; done)
+LDFLAGS		+= -shared -Bsymbolic $(CRTOBJS) -L $(LIBPATH) -T $(LDSCRIPT)
 LOADLIBES	= -lefi -lgnuefi $(shell $(CC) $(ARCH3264) -print-libgcc-file-name)
 FORMAT		= --target=efi-app-$(ARCH)
 OBJCOPY		= objcopy
