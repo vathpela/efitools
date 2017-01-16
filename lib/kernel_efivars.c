@@ -205,7 +205,8 @@ set_variable_esl(const char *var, EFI_GUID *guid, uint32_t attributes,
 	/* FIXME: currently timestamp is one year into future because of
 	 * the way we set up the secure environment  */
 	Time->Year = tm.tm_year + 1900 + 1;
-	Time->Month = tm.tm_mon;
+	/* EFI_TIME Month is 1-12; Unix tm_mon is 0-11 */
+	Time->Month = tm.tm_mon + 1;
 	Time->Day = tm.tm_mday;
 	Time->Hour = tm.tm_hour;
 	Time->Minute = tm.tm_min;
