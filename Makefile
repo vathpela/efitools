@@ -56,7 +56,7 @@ lib/asn1/libasn1.a lib/asn1/libasn1-efi.a: FORCE
 .KEEP: PK.crt KEK.crt DB.crt PK.key KEK.key DB.key PK.esl DB.esl KEK.esl \
 	$(EFIFILES)
 
-LockDown.o: PK.h KEK.h DB.h
+LockDown.o: PK.h KEK.h DB.h DBX.h
 PreLoader.o: hashlist.h
 
 PK.h: PK.auth
@@ -67,6 +67,11 @@ KEK.esl: KEK.crt $(APPEND_KEK)
 DB.h: DB.auth
 
 DB.esl: DB.crt $(APPEND_DB)
+
+DBX-hash.txt : ms-dbx-hash.txt
+	cp $< $@
+DBX.esl : DBX.hash
+	cp $< $@
 
 noPK.esl:
 	> noPK.esl
@@ -121,7 +126,7 @@ flash-var: flash-var.o lib/lib.a
 	$(CC) $(ARCH3264) -o $@ $< lib/lib.a
 
 clean:
-	rm -f PK.* KEK.* DB.* $(EFIFILES) $(EFISIGNED) $(BINARIES) *.o *.so
+	rm -f PK.* KEK.* DB.* DBX.* $(EFIFILES) $(EFISIGNED) $(BINARIES) *.o *.so
 	rm -f noPK.*
 	rm -f doc/*.1
 	$(MAKE) -C lib clean
