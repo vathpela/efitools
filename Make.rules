@@ -78,6 +78,9 @@ endif
 %.hash: %.efi hash-to-efi-sig-list
 	./hash-to-efi-sig-list $< $@
 
+%.hash: %-hash.txt hash-to-efi-sig-list
+	./hash-to-efi-sig-list --strings $< $@
+
 %-blacklist.esl: %.crt cert-to-efi-hash-list
 	./cert-to-efi-sig-list $< $@
 
@@ -91,6 +94,8 @@ getcert = $(shell if [ "$(1)" = "PK" -o "$(1)" = "KEK" ]; then echo "-c PK.crt -
 getvar = $(shell if [ "$(1)" = "PK" -o "$(1)" = "KEK" ]; then echo $(1); else echo db; fi)
 
 %.auth: %.esl PK.crt KEK.crt sign-efi-sig-list
+	./sign-efi-sig-list $(call getcert,$*) $(call getvar,$*) $< $@
+%.hashauth: %.hash PK.crt KEK.crt sign-efi-sig-list
 	./sign-efi-sig-list $(call getcert,$*) $(call getvar,$*) $< $@
 
 %-update.auth: %.esl PK.crt KEK.crt sign-efi-sig-list
