@@ -5,6 +5,8 @@
  * Do not edit manually!
  */
 
+#include <sys/types.h>
+
 #ifndef OID_H_
 #define OID_H_
 
