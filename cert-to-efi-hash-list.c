@@ -6,7 +6,7 @@
 
 
 #include <stdint.h>
-#define __STDC_VERSION__ 199901L
+#define _XOPEN_SOURCE
 #include <efi.h>
 #ifdef CONFIG_arm
 /* FIXME:
@@ -135,7 +135,11 @@ main(int argc, char *argv[])
         X509 *cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
 	unsigned char *cert_buf = NULL;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	int cert_len = i2d_X509_CINF(cert->cert_info, &cert_buf);
+#else
+	int cert_len = i2d_re_X509_tbs(cert, &cert_buf);
+#endif
 	ERR_print_errors_fp(stdout);
 
 	int len, digest_len, time_offset;
