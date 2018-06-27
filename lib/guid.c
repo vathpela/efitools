@@ -5,7 +5,6 @@
  */
 
 #include <guid.h>
-#include <stdio.h>
 #include <buildefi.h>
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof ((a)[0]))

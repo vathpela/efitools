@@ -1,12 +1,13 @@
 EFISIGNED = $(patsubst %.efi,%-signed.efi,$(EFIFILES))
 MANPAGES = $(patsubst doc/%.1.in,doc/%.1,$(wildcard doc/*.1.in))
 HELP2MAN = help2man
-ARCH	 = $(shell uname -m | sed 's/i.86/ia32/;s/arm.*/arm/')
+ARCH	 := $(shell uname -m | sed 's/i.86/ia32/;s/arm.*/arm/;s/x86_64/x64/;s/aarch64/aa64/')
+BINARCH  := $(shell uname -m | sed 's/i.86/ia32/;s/arm.*/arm/;')
 ifeq ($(ARCH),ia32)
 ARCH3264 = -m32
-else ifeq ($(ARCH),x86_64)
+else ifeq ($(ARCH),x64)
 ARCH3264 =
-else ifeq ($(ARCH),aarch64)
+else ifeq ($(ARCH),aa64)
 ARCH3264 =
 else ifeq ($(ARCH),arm)
 ARCH3264 =
@@ -18,7 +19,11 @@ CPPFLAGS   = -DCONFIG_$(ARCH)
 CFLAGS	   = -O2 -g $(ARCH3264) -fpic -Wall -fshort-wchar -fno-strict-aliasing -fno-merge-constants -fno-stack-protector -ffreestanding -fno-stack-check
 LDFLAGS	   = -nostdlib
 CRTOBJ		= crt0-efi-$(ARCH).o
-CRTPATHROOTS	= /lib /lib64 /usr/lib /usr/lib64
+ifeq ($(ARCH),x64)
+CRTPATHROOTS	= /usr/lib64/gnuefi /usr/lib64
+else ifeq ($(ARCH),ia32)
+CRTPATHROOTS	= /usr/lib/gnuefi /usr/lib
+endif
 CRTPATHENDS	= "" efi gnuefi
 CRTPATH		= $(shell for f in $(CRTPATHROOTS); do for g in $(CRTPATHENDS) ; do \
 			if [ -e $$f/$$g/$(CRTOBJ) ]; then echo $$f/$$g ; break 2; fi; done ; done)
@@ -33,7 +38,7 @@ LDSCRIPT	= $(shell for f in $(CRTPATHROOTS); do for g in $(CRTPATHENDS) ; do \
 			if [ -e $$f/$$g/$(LDSCRIPT_NAME) ]; then echo $$f/$$g/$(LDSCRIPT_NAME) ; break 2; fi; done ; done)
 LDFLAGS		+= -shared -Bsymbolic $(CRTOBJS) -L $(LIBPATH) -T $(LDSCRIPT)
 LOADLIBES	= -lefi -lgnuefi $(shell $(CC) $(ARCH3264) -print-libgcc-file-name)
-FORMAT		= --target=efi-app-$(ARCH)
+FORMAT		= --target=efi-app-$(BINARCH)
 OBJCOPY		= objcopy
 MYGUID		= 11111111-2222-4333-4444-123456789abc
 INSTALL		= install
@@ -45,7 +50,7 @@ DOCDIR		= $(DESTDIR)/usr/share/efitools
 # globally use EFI calling conventions (requires gcc >= 4.7)
 CFLAGS += -DGNU_EFI_USE_MS_ABI
 
-ifeq ($(ARCH),x86_64)
+ifeq ($(ARCH),x64)
   CFLAGS += -DEFI_FUNCTION_WRAPPER -mno-red-zone
 endif
 
@@ -58,7 +63,7 @@ ifeq ($(ARCH),arm)
   FORMAT = -O binary
 endif
 
-ifeq ($(ARCH),aarch64)
+ifeq ($(ARCH),aa64)
   LDFLAGS += --defsym=EFI_SUBSYSTEM=0x0a
   FORMAT = -O binary
 endif

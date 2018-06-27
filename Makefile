@@ -4,7 +4,7 @@ BINARIES = cert-to-efi-sig-list sig-list-to-certs sign-efi-sig-list \
 	hash-to-efi-sig-list efi-readvar efi-updatevar cert-to-efi-hash-list \
 	flash-var
 
-ifeq ($(ARCH),x86_64)
+ifeq ($(ARCH),x64)
 EFIFILES += PreLoader.efi
 endif
 

@@ -3,8 +3,8 @@
  *
  * see COPYING file
  */
-#include <efi/efi.h>
-#include <efi/efilib.h>
+#include <efi.h>
+#include <efilib.h>
 
 #include <console.h>
 #include <errors.h>
