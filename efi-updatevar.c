@@ -52,6 +52,7 @@ help(const char *progname)
 	       "\t-g <guid>\tOptional <guid> for the X509 Certificate\n"
 	       "\t-k <key>\tSecret key file for authorising User Mode updates\n"
 	       "\t-d <list>[-<entry>]\tDelete the signature list <list> (or just a single <entry> within the list)\n"
+	       "\t--engine <eng>\tUse engine <eng> for private key\n"
 	       );
 }
 
@@ -60,6 +61,7 @@ main(int argc, char *argv[])
 {
 	char *variables[] = { "PK", "KEK", "db", "dbx" };
 	char *signedby[] = { "PK", "PK", "KEK", "KEK" };
+	char *engine = NULL;
 	EFI_GUID *owners[] = { &GV_GUID, &GV_GUID, &SIG_DB, &SIG_DB };
 	EFI_GUID *owner, guid = MOK_OWNER;
 	int i, esl_mode = 0, fd, ret, delsig = -1, delentry = -1;
@@ -112,6 +114,10 @@ main(int argc, char *argv[])
 			argc -= 2;
 		} else if (strcmp(argv[1], "-d") == 0) {
 			sscanf(argv[2], "%d-%d", &delsig, &delentry);
+			argv += 2;
+			argc -= 2;
+		} else if (strcmp(argv[1], "--engine") == 0) {
+			engine = argv[2];
 			argv += 2;
 			argc -= 2;
 		} else {
@@ -280,8 +286,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "Can't update variable%s without a key\n", variable_is_setupmode() ? "" : " in User Mode");
 			exit(1);
 		}
-		BIO *key = BIO_new_file(key_file, "r");
-		EVP_PKEY *pkey = PEM_read_bio_PrivateKey(key, NULL, NULL, NULL);
+		EVP_PKEY *pkey = read_private_key(engine, key_file);
 		if (!pkey) {
 			fprintf(stderr, "error reading private key %s\n", key_file);
 			exit(1);

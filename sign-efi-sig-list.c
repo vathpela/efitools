@@ -31,7 +31,7 @@
 static void
 usage(const char *progname)
 {
-	printf("Usage: %s [-r] [-m] [-a] [-g <guid>] [-o] [-t <timestamp>] [-i <infile>] [-c <crt file>] [-k <key file>] <var> <efi sig list file> <output file>\n", progname);
+	printf("Usage: %s [-r] [-m] [-a] [-g <guid>] [-o] [-t <timestamp>] [-i <infile>] [-c <crt file>] [-k <key file>] [-e <engine>] <var> <efi sig list file> <output file>\n", progname);
 }
 
 static void
@@ -66,6 +66,7 @@ main(int argc, char *argv[])
 		*str, *signedinput = NULL, *timestampstr = NULL;
 	void *out;
 	const char *progname = argv[0];
+	char *engine = NULL;
 	unsigned char *sigbuf;
 	int rsasig = 0, monotonic = 0, varlen, i, outputforsign = 0, outlen,
 		sigsize;
@@ -122,6 +123,10 @@ main(int argc, char *argv[])
 			argc -= 2;
 		} else if (strcmp("-c", argv[1]) == 0) {
 			certfile = argv[2];
+			argv += 2;
+			argc -= 2;
+		} else if (strcmp("-e", argv[1]) == 0) {
+			engine = argv[2];
 			argv += 2;
 			argc -= 2;
 		} else  {
@@ -243,7 +248,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 		if (sign_efi_var(signbuf, signbuflen, keyfile, certfile,
-				 &sigbuf, &sigsize))
+				 &sigbuf, &sigsize, engine))
 			exit(1);
 	}
 	printf("Signature of size %d\n", sigsize);

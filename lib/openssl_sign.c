@@ -7,6 +7,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
+#include <openssl/engine.h>
 
 #include <openssl_sign.h>
 
@@ -32,7 +33,7 @@ sign_efi_var_ssl(char *payload, int payload_size, EVP_PKEY *pkey, X509 *cert,
 
 int
 sign_efi_var(char *payload, int payload_size, char *keyfile, char *certfile,
-	     unsigned char **sig, int *sigsize)
+	     unsigned char **sig, int *sigsize, char *engine)
 {
 	int ret;
 
@@ -46,15 +47,20 @@ sign_efi_var(char *payload, int payload_size, char *keyfile, char *certfile,
 	ERR_clear_error();
 
 	BIO *cert_bio = BIO_new_file(certfile, "r");
+	if (!cert_bio) {
+		ERR_print_errors_fp(stdout);
+		fprintf(stderr, "error reading certificate %s\n", certfile);
+		return 1;
+	}
 	X509 *cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
+	BIO_free(cert_bio);
 	if (!cert) {
 		ERR_print_errors_fp(stdout);
 		fprintf(stderr, "error reading certificate %s\n", certfile);
 		return 1;
 	}
 
-	BIO *privkey_bio = BIO_new_file(keyfile, "r");
-	EVP_PKEY *pkey = PEM_read_bio_PrivateKey(privkey_bio, NULL, NULL, NULL);
+	EVP_PKEY *pkey = read_private_key(engine, keyfile);
 	if (!pkey) {
 		ERR_print_errors_fp(stdout);
 		fprintf(stderr, "error reading private key %s\n", keyfile);
@@ -66,4 +72,85 @@ sign_efi_var(char *payload, int payload_size, char *keyfile, char *certfile,
 	X509_free(cert);
 
 	return ret;
+}
+
+static EVP_PKEY *
+read_pem_private_key(char *keyfile)
+{
+	BIO *key = BIO_new_file(keyfile, "r");
+	EVP_PKEY *pkey;
+
+	if (!key) {
+		ERR_print_errors_fp(stdout);
+		fprintf(stderr, "error reading private key file %s\n", keyfile);
+		return NULL;
+	}
+	pkey = PEM_read_bio_PrivateKey(key, NULL, NULL, NULL);
+	BIO_free(key);
+
+	if (!pkey) {
+		ERR_print_errors_fp(stdout);
+		fprintf(stderr, "error processing private key file %s\n", keyfile);
+		return NULL;
+	}
+	return pkey;
+}
+
+static int ui_read(UI *ui, UI_STRING *uis)
+{
+	char password[128];
+
+	if (UI_get_string_type(uis) != UIT_PROMPT)
+		return 0;
+
+	EVP_read_pw_string(password, sizeof(password), "Enter engine key pass phrase:", 0);
+	UI_set_result(ui, uis, password);
+	return 1;
+}
+
+static EVP_PKEY *
+read_engine_private_key(char *engine, char *keyfile)
+{
+	UI_METHOD *ui;
+	ENGINE *e;
+	EVP_PKEY *pkey = NULL;
+
+	ENGINE_load_builtin_engines();
+	e = ENGINE_by_id(engine);
+
+	if (!e) {
+		fprintf(stderr, "Failed to load engine: %s\n", engine);
+		ERR_print_errors_fp(stderr);
+		return NULL;
+	}
+
+	ui = UI_create_method("sbsigntools");
+	if (!ui) {
+		fprintf(stderr, "Failed to create UI method\n");
+		ERR_print_errors_fp(stderr);
+		goto out_free;
+	}
+	UI_method_set_reader(ui, ui_read);
+
+	if (!ENGINE_init(e)) {
+		fprintf(stderr, "Failed to initialize engine %s\n", engine);
+		ERR_print_errors_fp(stderr);
+		goto out_free;
+	}
+
+	pkey = ENGINE_load_private_key(e, keyfile, ui, NULL);
+	ENGINE_finish(e);
+
+ out_free:
+	ENGINE_free(e);
+	return pkey;
+}
+
+EVP_PKEY *
+read_private_key(char *engine, char *keyfile)
+{
+	if (engine)
+		return read_engine_private_key(engine, keyfile);
+	else
+		return read_pem_private_key(keyfile);
 }
