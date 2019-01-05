@@ -23,13 +23,10 @@
 #include <unistd.h>
 #include <wchar.h>
 
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/sha.h>
-
 #include <variables.h>
 #include <guid.h>
 #include <version.h>
+#include <openssl_sign.h>
 
 static void
 usage(const char *progname)
@@ -228,8 +225,6 @@ main(int argc, char *argv[])
 		goto output;
 	}
 
-	PKCS7 *p7;
-
 	if (signedinput) {
 		struct stat sti;
 		int infile = open(signedinput, O_RDONLY);
@@ -247,39 +242,9 @@ main(int argc, char *argv[])
 			fprintf(stderr, "Doing signing, need certificate and key\n");
 			exit(1);
 		}
-
-		ERR_load_crypto_strings();
-		OpenSSL_add_all_digests();
-		OpenSSL_add_all_ciphers();
-		/* here we may get highly unlikely failures or we'll get a
-		 * complaint about FIPS signatures (usually becuase the FIPS
-		 * module isn't present).  In either case ignore the errors
-		 * (malloc will cause other failures out lower down */
-		ERR_clear_error();
-
-		BIO *cert_bio = BIO_new_file(certfile, "r");
-		X509 *cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
-		if (!cert) {
-			fprintf(stderr, "error reading certificate %s\n", certfile);
+		if (sign_efi_var(signbuf, signbuflen, keyfile, certfile,
+				 &sigbuf, &sigsize))
 			exit(1);
-		}
-
-		BIO *privkey_bio = BIO_new_file(keyfile, "r");
-		EVP_PKEY *pkey = PEM_read_bio_PrivateKey(privkey_bio, NULL, NULL, NULL);
-		if (!pkey) {
-			fprintf(stderr, "error reading private key %s\n", keyfile);
-			exit(1);
-		}
-
-		BIO *bio_data = BIO_new_mem_buf(signbuf, signbuflen);
-	
-		p7 = PKCS7_sign(NULL, NULL, NULL, bio_data, PKCS7_BINARY|PKCS7_PARTIAL|PKCS7_DETACHED|PKCS7_NOATTR);
-		const EVP_MD *md = EVP_get_digestbyname("SHA256");
-		PKCS7_sign_add_signer(p7, cert, pkey, md, PKCS7_BINARY|PKCS7_DETACHED|PKCS7_NOATTR);
-		PKCS7_final(p7, bio_data, PKCS7_BINARY|PKCS7_DETACHED|PKCS7_NOATTR);
-
-
-		sigsize = i2d_PKCS7(p7, NULL);
 	}
 	printf("Signature of size %d\n", sigsize);
 
@@ -291,14 +256,10 @@ main(int argc, char *argv[])
 	var_auth->AuthInfo.Hdr.wRevision = 0x0200;
 	var_auth->AuthInfo.Hdr.wCertificateType = WIN_CERT_TYPE_EFI_GUID;
 
-	if (signedinput) {
-		memcpy(var_auth->AuthInfo.CertData, sigbuf, sigsize);
-		sigbuf = var_auth->AuthInfo.CertData;
-	} else {
-		sigbuf = var_auth->AuthInfo.CertData;
+	memcpy(var_auth->AuthInfo.CertData, sigbuf, sigsize);
+	sigbuf = var_auth->AuthInfo.CertData;
+	if (!signedinput) {
 		printf("Signature at: %ld\n", sigbuf - (unsigned char *)var_auth);
-		i2d_PKCS7(p7, &sigbuf);
-		ERR_print_errors_fp(stdout);
 	}
 
 	out = var_auth;

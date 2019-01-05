@@ -24,6 +24,7 @@
 #include <efi.h>
 
 #include <kernel_efivars.h>
+#include <openssl_sign.h>
 #include <guid.h>
 #include <sha256.h>
 #include <version.h>
@@ -321,6 +322,9 @@ main(int argc, char *argv[])
 
 		EFI_TIME timestamp;
 		time_t t;
+		unsigned char *tmp;
+		int sigsize;
+
 		struct tm *tm;
 		memset(&timestamp, 0, sizeof(timestamp));
 		time(&t);
@@ -353,17 +357,7 @@ main(int argc, char *argv[])
 		ptr += sizeof(timestamp);
 		memcpy(ptr, buf, st.st_size);
 
-		BIO *bio = BIO_new_mem_buf(signbuf, signbuflen);
-		PKCS7 *p7 = PKCS7_sign(NULL, NULL, NULL, bio,
-				       PKCS7_BINARY | PKCS7_PARTIAL
-				       | PKCS7_DETACHED | PKCS7_NOATTR);
-		const EVP_MD *md = EVP_get_digestbyname("SHA256");
-		PKCS7_sign_add_signer(p7, X, pkey, md, PKCS7_BINARY
-				      | PKCS7_DETACHED | PKCS7_NOATTR);
-		PKCS7_final(p7, bio, PKCS7_BINARY | PKCS7_DETACHED | PKCS7_NOATTR);
-
-
-		int sigsize = i2d_PKCS7(p7, NULL);
+		sign_efi_var_ssl(signbuf, signbuflen, pkey, X, &tmp, &sigsize);
 
 		EFI_VARIABLE_AUTHENTICATION_2 *var_auth = malloc(sizeof(EFI_VARIABLE_AUTHENTICATION_2) + sigsize);
 		var_auth->TimeStamp = timestamp;
@@ -371,8 +365,7 @@ main(int argc, char *argv[])
 		var_auth->AuthInfo.Hdr.dwLength = sigsize + OFFSET_OF(WIN_CERTIFICATE_UEFI_GUID, CertData);
 		var_auth->AuthInfo.Hdr.wRevision = 0x0200;
 		var_auth->AuthInfo.Hdr.wCertificateType = WIN_CERT_TYPE_EFI_GUID;
-		unsigned char *tmp = var_auth->AuthInfo.CertData;
-		i2d_PKCS7(p7, &tmp);
+		memcpy(var_auth->AuthInfo.CertData, tmp, sigsize);
 		ERR_print_errors_fp(stderr);
 
 		/* new update now consists of two parts: the
