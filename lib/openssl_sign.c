@@ -24,7 +24,7 @@ sign_efi_var_ssl(char *payload, int payload_size, EVP_PKEY *pkey, X509 *cert,
 	PKCS7_final(p7, bio_data, PKCS7_BINARY|PKCS7_DETACHED|PKCS7_NOATTR);
 
 	*sig = NULL;
-	*sigsize = i2d_PKCS7(p7, sig);
+	*sigsize = i2d_PKCS7_SIGNED(p7->d.sign, sig);
 	PKCS7_free(p7);
 	ERR_print_errors_fp(stdout);
 
