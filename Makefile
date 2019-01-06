@@ -88,28 +88,28 @@ HelloWorld.so: lib/lib-efi.a
 ShimReplace.so: lib/lib-efi.a
 
 cert-to-efi-sig-list: cert-to-efi-sig-list.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 sig-list-to-certs: sig-list-to-certs.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 sign-efi-sig-list: sign-efi-sig-list.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 hash-to-efi-sig-list: hash-to-efi-sig-list.o lib/lib.a
 	$(CC) $(ARCH3264) -o $@ $< lib/lib.a
 
 cert-to-efi-hash-list: cert-to-efi-hash-list.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 efi-keytool: efi-keytool.o lib/lib.a
 	$(CC) $(ARCH3264) -o $@ $< lib/lib.a
 
 efi-readvar: efi-readvar.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 efi-updatevar: efi-updatevar.o lib/lib.a
-	$(CC) $(ARCH3264) -o $@ $< -lcrypto lib/lib.a
+	$(CC) $(ARCH3264) -o $@ $< lib/lib.a -lcrypto
 
 flash-var: flash-var.o lib/lib.a
 	$(CC) $(ARCH3264) -o $@ $< lib/lib.a
