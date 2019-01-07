@@ -56,6 +56,7 @@ help(const char *progname)
 	       "\t-g <guid>        Use <guid> as the signature owner GUID\n"
 	       "\t-c <crt>         <crt> is the file containing the signing certificate in PEM format\n"
 	       "\t-k <key>         <key> is the file containing the key for <crt> in PEM format\n"
+	       "\t-e <engine>      Use openssl engine <engine> for the private key\n"
 	       );
 }
 
