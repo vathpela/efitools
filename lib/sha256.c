@@ -343,19 +343,21 @@ sha256_get_pecoff_digest_mem(void *buffer, UINTN DataSize,
 	for (i = 0; i < context.NumberOfSections; i++) {
 		section = sections[i];
 		hashbase  = pecoff_image_address(buffer, DataSize, section->PointerToRawData);
-		hashsize  = (unsigned int) ALIGN_VALUE(section->SizeOfRawData,
-						       context.FileAlignment);
+		hashsize  = section->SizeOfRawData;
 		if (hashsize == 0)
 			continue;
 		sha256_update(&ctx, hashbase, hashsize);
 		sum_of_bytes += hashsize;
 	}
 
-	if (DataSize > sum_of_bytes) {
+	if (DataSize > sum_of_bytes + context.SecDir->Size) {
 		/* stuff at end to hash */
 		hashbase = buffer + sum_of_bytes;
 		hashsize = (unsigned int)(DataSize - context.SecDir->Size - sum_of_bytes);
 		sha256_update(&ctx, hashbase, hashsize);
+	} else if (DataSize < sum_of_bytes + context.SecDir->Size) {
+		/* warn but hope the checksum is right */
+		Print(L"Invalid Data Size %d bytes too small\n", DataSize + context.SecDir->Size - sum_of_bytes);
 	}
 	sha256_finish(&ctx, hash);
 
