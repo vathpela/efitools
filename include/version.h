@@ -1,4 +1,4 @@
-#define VERSION "1.9.1"
+#define VERSION "1.9.2"
 
 static void
 version(const char *progname)
