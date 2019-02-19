@@ -12,6 +12,8 @@
 PK.h
 KEK.h
 DB.h
+DBX.h
+DBX-hash.txt
 hashlist.h
 *.hash
 *~
