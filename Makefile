@@ -1,14 +1,12 @@
 EFIFILES = HelloWorld.efi LockDown.efi Loader.efi ReadVars.efi UpdateVars.efi \
 	KeyTool.efi HashTool.efi SetNull.efi ShimReplace.efi
-BINARIES = cert-to-efi-sig-list sig-list-to-certs sign-efi-sig-list \
+BINARIES := cert-to-efi-sig-list sig-list-to-certs sign-efi-sig-list \
 	hash-to-efi-sig-list efi-readvar efi-updatevar cert-to-efi-hash-list \
 	flash-var
 
 ifeq ($(ARCH),x64)
 EFIFILES += PreLoader.efi
 endif
-
-MSGUID = 77FA9ABD-0359-4D32-BD60-28F4E78F784B
 
 KEYS = PK KEK DB
 EXTRAKEYS = DB1 DB2
@@ -30,9 +28,12 @@ include Make.rules
 
 EFISIGNED = $(patsubst %.efi,%-signed.efi,$(EFIFILES))
 
-all: $(EFISIGNED) $(BINARIES) $(MANPAGES) noPK.auth $(KEYAUTH) \
+all: tools $(EFISIGNED) $(MANPAGES) noPK.auth $(KEYAUTH) \
 	$(KEYUPDATEAUTH) $(KEYBLACKLISTAUTH) $(KEYHASHBLACKLISTAUTH)
 
+tools : $(BINARIES)
+
+%.esl %.efi %.hash : | tools
 
 install: all
 	$(INSTALL) -m 755 -d $(MANDIR)
@@ -78,9 +79,6 @@ noPK.esl:
 
 noPK.auth: noPK.esl PK.crt sign-efi-sig-list
 	./sign-efi-sig-list -t "$(shell date --date='1 second' +'%Y-%m-%d %H:%M:%S')" -c PK.crt -k PK.key PK $< $@
-
-ms-%.esl: ms-%.crt cert-to-efi-sig-list
-	./cert-to-efi-sig-list -g $(MSGUID) $< $@
 
 hashlist.h: HashTool.hash
 	cat $^ > /tmp/tmp.hash

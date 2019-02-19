@@ -41,6 +41,7 @@ LOADLIBES	= -lefi -lgnuefi $(shell $(CC) $(ARCH3264) -print-libgcc-file-name)
 FORMAT		= --target=efi-app-$(BINARCH)
 OBJCOPY		= objcopy
 MYGUID		= 11111111-2222-4333-4444-123456789abc
+MSGUID		= 77FA9ABD-0359-4D32-BD60-28F4E78F784B
 INSTALL		= install
 BINDIR		= $(DESTDIR)/usr/bin
 MANDIR		= $(DESTDIR)/usr/share/man/man1
@@ -80,20 +81,25 @@ endif
 %.h: %.auth
 	./xxdi.pl $< > $@
 
-%.hash: %.efi hash-to-efi-sig-list
+%.hash : | hash-to-efi-sig-list
+
+%.hash: %.efi | hash-to-efi-sig-list
 	./hash-to-efi-sig-list $< $@
 
-%.hash: %-hash.txt hash-to-efi-sig-list
+%.hash: %-hash.txt | hash-to-efi-sig-list
 	./hash-to-efi-sig-list --strings $< $@
 
-%-blacklist.esl: %.crt cert-to-efi-hash-list
-	./cert-to-efi-sig-list $< $@
+%-blacklist.esl: %.crt
+	./cert-to-efi-sig-list $^ $@
 
-%-hash-blacklist.esl: %.crt cert-to-efi-hash-list
-	./cert-to-efi-hash-list $< $@
+%-hash-blacklist.esl: %.crt
+	./cert-to-efi-hash-list $^ $@
 
-%.esl: %.crt | cert-to-efi-sig-list
+%.esl: %.crt | cert-to-efi-sig-list cert-to-efi-hash-list
 	./cert-to-efi-sig-list -g $(MYGUID) $^ $@
+
+ms-%.esl: ms-%.crt
+	./cert-to-efi-sig-list -g $(MSGUID) $^ $@
 
 getcert = $(shell if [ "$(1)" = "PK" -o "$(1)" = "KEK" ]; then echo "-c PK.crt -k PK.key"; else echo "-c KEK.crt -k KEK.key"; fi)
 getvar = $(shell if [ "$(1)" = "PK" -o "$(1)" = "KEK" ]; then echo $(1); else echo db; fi)
