@@ -134,7 +134,7 @@ main(int argc, char *argv[])
 
 	varfile = open(argv[3], O_RDONLY);
 	if (varfile < 0) {
-		fprintf(stderr, "Failed to read file %s:", argv[1]);
+		fprintf(stderr, "Failed to read file %s:", argv[3]);
 		perror("");
 	}
 	fstat(varfile, &st);
